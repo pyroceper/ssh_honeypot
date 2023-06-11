@@ -9,11 +9,143 @@ size_t write_to_string(void* ptr, size_t size, size_t count, void* stream) {
     return size * count;
 }
 
+std::string GetAnalysisFromUrl(std::string url) {
+
+    url = "url=" + url;
+
+    std::string apikey;
+    std::ifstream readKeyFromFile("apikey.txt"); //TODO fail safely
+    getline(readKeyFromFile, apikey);
+    readKeyFromFile.close();
+
+    CURL* curl;
+    CURLcode res;
+
+    curl = curl_easy_init();
+
+    if (curl) {
+        /* Set method and URL */
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_easy_setopt(curl, CURLOPT_URL, "https://www.virustotal.com/api/v3/urls");
+
+        /* Set headers */
+        struct curl_slist* headers = NULL;
+        headers = curl_slist_append(headers, "accept: application/json");
+        headers = curl_slist_append(headers, apikey.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, url.c_str());
+
+        /* Set callback function for accessing the response body */
+        std::string response;
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        /* Send it */
+        CURLcode res = curl_easy_perform(curl);
+
+        /* Parse analysis link (if any) and perform GET on it */
+        if (res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+        }
+        else if (response.length() <= 0) {
+            fprintf(stderr, "write response to body failed: %s\n",
+                curl_easy_strerror(res));
+        }
+        else {
+            //TODO fail safely
+            std::string link = response.substr(response.find("self") + 8); //API response has format - "self": "https: ... - don't want to parse the whole JSON just for this
+            link = link.substr(0, link.find("\""));
+
+            curl_easy_reset(curl);
+            curl_easy_setopt(curl, CURLOPT_URL, link.c_str());
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+            res = curl_easy_perform(curl);
+
+            if (res != CURLE_OK) {
+                fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                    curl_easy_strerror(res));
+            }
+            else if (response.length() <= 0) {
+                fprintf(stderr, "write response to body failed: %s\n",
+                    curl_easy_strerror(res));
+            }
+            else {
+
+                curl_easy_cleanup(curl);
+                curl_slist_free_all(headers);
+
+                return response;
+            }
+
+        }
+
+    }
+
+    curl_easy_cleanup(curl);
+    return ""; //TODO fail safely
+}
+
+std::string GetAnalysisFromHash(std::string hash) {
+
+    if (hash.length() <= 0)
+        return ""; //TODO error handling
+
+    std::string url = "https://www.virustotal.com/api/v3/files/" + hash;
+    std::string apikey;
+    std::ifstream readKeyFromFile("apikey.txt"); //TODO fail safely
+    getline(readKeyFromFile, apikey);
+    readKeyFromFile.close();
+
+    CURL* curl = curl_easy_init();
+
+    if (curl) {
+
+        /* Set method and URL */
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "GET");
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+
+        /* Set headers */
+        struct curl_slist* headers = NULL;
+        headers = curl_slist_append(headers, "accept: application/json");
+        headers = curl_slist_append(headers, apikey.c_str());
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        /* Set callback function for accessing the response body */
+        std::string response;
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
+        /* Send it */
+        CURLcode res = curl_easy_perform(curl);
+
+        /* Get response */
+        if (res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                curl_easy_strerror(res));
+        }
+        else if (response.length() <= 0) {
+            fprintf(stderr, "write response to body failed: %s\n",
+                curl_easy_strerror(res));
+        }
+        else {
+
+            curl_easy_cleanup(curl);
+            curl_slist_free_all(headers);
+
+            return response;
+        }
+    }
+    return ""; //TODO fail safely
+}
+
 std::string GetAnalysisFromFile(std::string filePath) {
 
     std::string url = "https://www.virustotal.com/api/v3/files";
     std::string fileName = filePath.substr(filePath.find_last_of("/") + 1); //TODO fail safely
-    std::cout << fileName;
     std::string apikey;
     std::ifstream readKeyFromFile("apikey.txt"); //TODO fail safely
     getline(readKeyFromFile, apikey);
@@ -43,8 +175,6 @@ std::string GetAnalysisFromFile(std::string filePath) {
         /* what URL that receives this POST */
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-        /* verbose mode */
-        //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
         curl_easy_setopt(curl, CURLOPT_MIMEPOST, form);
@@ -105,8 +235,7 @@ std::string GetAnalysisFromFile(std::string filePath) {
         /* free slist */
         curl_slist_free_all(headerlist);
 
-        return ""; //TODO fail safely
     }
-}
 
-//TODO implement GetAnalysisFromHash function
+    return ""; //TODO fail safely
+}
