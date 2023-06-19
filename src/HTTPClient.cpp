@@ -6,11 +6,12 @@
 //Data file path is passed on function - can be full or relative path (if on the same directory)
 int main(void)
 {
-    //std::cout << GetAnalysisFromFile("eicar.txt");
+    //std::cout << GetAnalysisFromFile("C:/Users/Gabriel/Desktop/test.txt");
+    std::cout << GetAnalysisFromFile("eicar"); //relative path for file without extension
 
     //std::cout << GetAnalysisFromHash("275A021BBFB6489E54D471899F7DB9D1663FC695EC2FE2A2C4538AABF651FD0F"); //EICAR test file SHA256 hash
 
-    std::cout << GetAnalysisFromUrl("google.com");
+    //std::cout << GetAnalysisFromUrl("google.com");
 
     return 0;
 }

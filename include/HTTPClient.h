@@ -3,6 +3,8 @@
 #include <curl/curl.h>
 #include <iostream>
 #include <fstream>
+#include <chrono>
+#include <thread>
 
 size_t write_to_string(void* ptr, size_t size, size_t count, void* stream) {
     ((std::string*)stream)->append((char*)ptr, 0, size * count);
@@ -56,7 +58,7 @@ std::string GetAnalysisFromUrl(std::string url) {
             //TODO fail safely
             std::string link = response.substr(response.find("self") + 8); //API response has format - "self": "https: ... - don't want to parse the whole JSON just for this
             link = link.substr(0, link.find("\""));
-
+            response = response + "\n\n";
             curl_easy_reset(curl);
             curl_easy_setopt(curl, CURLOPT_URL, link.c_str());
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
@@ -72,6 +74,19 @@ std::string GetAnalysisFromUrl(std::string url) {
             else if (response.length() <= 0) {
                 fprintf(stderr, "write response to body failed: %s\n",
                     curl_easy_strerror(res));
+            }
+            else if (response.find("\"status\": \"queued\"") != std::string::npos) { //VirusTotal API might respond with analysis as "queued" and we need to retry
+                do {
+                    std::cout << "queued, retrying\n";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10000)); //Wait for VirusTotal to process
+                    response = ""; //Clear response which is getting all responses written in sequence
+                    res = curl_easy_perform(curl);
+                    if (res != CURLE_OK) {
+                        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                            curl_easy_strerror(res));
+                    }
+                } while (response.find("queued") != std::string::npos);
+                return response;
             }
             else {
 
@@ -198,12 +213,13 @@ std::string GetAnalysisFromFile(std::string filePath) {
             //TODO fail safely
             std::string link = response.substr(response.find("self") + 8); //API response has format - "self": "https: ... - don't want to parse the whole JSON just for this
             link = link.substr(0, link.find("\""));
-
+            response = response + "\n\n";
             curl_easy_reset(curl);
             curl_easy_setopt(curl, CURLOPT_URL, link.c_str());
             curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_to_string);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
+
 
             res = curl_easy_perform(curl);
 
@@ -214,6 +230,19 @@ std::string GetAnalysisFromFile(std::string filePath) {
             else if (response.length() <= 0) {
                 fprintf(stderr, "write response to body failed: %s\n",
                     curl_easy_strerror(res));
+            }
+            else if (response.find("\"status\": \"queued\"") != std::string::npos) { //VirusTotal API might respond with analysis as "queued" and we need to retry
+                do {
+                    std::cout << "queued, retrying\n";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10000)); //Wait for VirusTotal to process
+                    response = ""; //Clear response which is getting all responses written in sequence
+                    res = curl_easy_perform(curl);
+                    if (res != CURLE_OK) {
+                        fprintf(stderr, "curl_easy_perform() failed: %s\n",
+                            curl_easy_strerror(res));
+                    }
+                } while (response.find("queued") != std::string::npos);
+                return response;
             }
             else {
 
