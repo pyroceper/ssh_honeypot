@@ -1,0 +1,7 @@
+{
+    "port" : 2222,
+    "path" : "fs",
+    "banner" : "SSH honeypot",
+    "fakeroot" : 1,
+    "API" : "x-apikey: <key>"
+}
