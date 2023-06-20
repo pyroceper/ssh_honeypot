@@ -1,3 +1,6 @@
 bin/*
 keys/*
-src/apikey.txt
+logs/*
+eicar
+*.txt
+*.json

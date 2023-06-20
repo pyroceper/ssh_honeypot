@@ -1,5 +1,5 @@
 all:
-	g++ src/main.cpp -I./include/ -lssh -o bin/hp
+	g++ src/main.cpp -I./include/ -lssh -lutil -lcurl -o bin/hp
 
 clean:
 	rm src/*.o bin/hp

@@ -1,3 +1,6 @@
+#ifndef HTTP_CLIENT_H
+#define HTTP_CLIENT_H
+
 #include <stdio.h>
 #include <string>
 #include <curl/curl.h>
@@ -268,3 +271,5 @@ std::string GetAnalysisFromFile(std::string filePath) {
 
     return ""; //TODO fail safely
 }
+
+#endif
